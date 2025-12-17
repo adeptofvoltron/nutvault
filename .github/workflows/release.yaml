@@ -20,7 +20,9 @@ jobs:
         run: ./release.sh
 
       - name: Create GitHub Release
-        uses: ncipollo/release-action@v2
+        uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.ref_name }}
-          files: dist/*
+          artifacts: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+
