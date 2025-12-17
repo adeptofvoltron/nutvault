@@ -106,6 +106,15 @@ Examples:
 	RunE: runRemove,
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number",
+	Long:  "Print the version number of nutvault",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("nutvault version 1.0.0")
+	},
+}
+
 func init() {
 	collectCmd.Flags().StringVarP(&collectEnvFile, "env-file", "e", ".env", "Path to .env file (default: .env in current directory)")
 	collectCmd.Flags().StringVarP(&collectKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
@@ -122,6 +131,7 @@ func init() {
 	rootCmd.AddCommand(fillCmd)
 	rootCmd.AddCommand(swapCmd)
 	rootCmd.AddCommand(removeCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 // loadKeyFromFile loads a key from a file in hex format.
