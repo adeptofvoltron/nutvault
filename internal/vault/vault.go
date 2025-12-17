@@ -78,10 +78,11 @@ func calculateProjectHash(projectName string, key []byte) string {
 // The project directory is created at ~/.nutvault/projects/<projectName>.<hash>
 //
 // Example:
-//   project, err := vault.NewProject("myproject", nil)
-//   if err != nil {
-//       log.Fatal(err)
-//   }
+//
+//	project, err := vault.NewProject("myproject", nil)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func NewProject(projectName string, key []byte) (*Project, error) {
 	// Use default key if none provided
 	if key == nil {
@@ -207,7 +208,7 @@ func (p *Project) loadVariables() error {
 // saveVariables encrypts and saves variables to the data.json file in the project directory.
 func (p *Project) saveVariables() error {
 	dataPath := filepath.Join(p.projectDir, "data.json")
-	
+
 	// Marshal to JSON
 	jsonData, err := json.MarshalIndent(p.variables, "", "  ")
 	if err != nil {
@@ -232,10 +233,11 @@ func (p *Project) saveVariables() error {
 // The variable is stored in memory and persisted to data.json file.
 //
 // Example:
-//   err := project.SaveVariable("API_KEY", "secret123")
-//   if err != nil {
-//       log.Fatal(err)
-//   }
+//
+//	err := project.SaveVariable("API_KEY", "secret123")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func (p *Project) SaveVariable(key string, value string) error {
 	if p.variables == nil {
 		p.variables = make(map[string]string)
@@ -254,13 +256,14 @@ func (p *Project) SaveVariable(key string, value string) error {
 // Returns the value, a boolean indicating if the key exists, and any error.
 //
 // Example:
-//   value, exists, err := project.GetVariable("API_KEY")
-//   if err != nil {
-//       log.Fatal(err)
-//   }
-//   if exists {
-//       fmt.Println("Value:", value)
-//   }
+//
+//	value, exists, err := project.GetVariable("API_KEY")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	if exists {
+//	    fmt.Println("Value:", value)
+//	}
 func (p *Project) GetVariable(key string) (string, bool, error) {
 	if p.variables == nil {
 		// Try to load variables if not loaded
@@ -282,10 +285,11 @@ func (p *Project) GetVariable(key string) (string, bool, error) {
 // This operation cannot be undone.
 //
 // Example:
-//   err := project.ClearProject()
-//   if err != nil {
-//       log.Fatal(err)
-//   }
+//
+//	err := project.ClearProject()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func (p *Project) ClearProject() error {
 	if p.projectDir == "" {
 		return fmt.Errorf("project directory not set")
@@ -329,3 +333,86 @@ func (p *Project) GetAllVariables() map[string]string {
 	return result
 }
 
+// ProjectInfo represents information about a vault project.
+type ProjectInfo struct {
+	Name     string
+	Hash     string
+	Path     string
+	VarCount int
+}
+
+// ListProjects lists all vault projects in ~/.nutvault/projects/.
+// Returns a slice of ProjectInfo with project name, hash, path, and variable count.
+func ListProjects() ([]ProjectInfo, error) {
+	// Get home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	// Get projects directory
+	projectsDir := filepath.Join(homeDir, ".nutvault", "projects")
+
+	// Check if directory exists
+	if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
+		// Return empty list if directory doesn't exist
+		return []ProjectInfo{}, nil
+	}
+
+	// Read directory entries
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read projects directory: %w", err)
+	}
+
+	var projects []ProjectInfo
+
+	// Process each entry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		dirName := entry.Name()
+
+		// Parse project name and hash (format: <projectName>.<hash>)
+		parts := strings.SplitN(dirName, ".", 2)
+		if len(parts) != 2 {
+			// Skip invalid format
+			continue
+		}
+
+		projectName := parts[0]
+		projectHash := parts[1]
+		projectPath := filepath.Join(projectsDir, dirName)
+
+		// Try to get variable count by attempting to load the project
+		// We'll use default key to try to open it
+		varCount := 0
+		defaultKey, err := generateDefaultKey()
+		if err == nil {
+			// Calculate hash with default key
+			hash := calculateProjectHash(projectName, defaultKey)
+			if hash == projectHash {
+				// This project uses default key, try to load it
+				project := &Project{
+					projectDir: projectPath,
+					key:        defaultKey,
+					variables:  make(map[string]string),
+				}
+				if err := project.loadVariables(); err == nil {
+					varCount = len(project.variables)
+				}
+			}
+		}
+
+		projects = append(projects, ProjectInfo{
+			Name:     projectName,
+			Hash:     projectHash,
+			Path:     projectPath,
+			VarCount: varCount,
+		})
+	}
+
+	return projects, nil
+}

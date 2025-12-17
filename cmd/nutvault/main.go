@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bernard/nutvault/internal/env"
-	"github.com/bernard/nutvault/internal/vault"
+	"github.com/adeptofvoltron/nutvault/internal/env"
+	"github.com/adeptofvoltron/nutvault/internal/vault"
 	"github.com/spf13/cobra"
 )
 
@@ -106,6 +106,19 @@ Examples:
 	RunE: runRemove,
 }
 
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all vault projects",
+	Long: `List displays all vault projects stored in ~/.nutvault/projects/.
+For each project, it shows the project name, hash, path, and number of variables.
+
+Examples:
+  # List all projects
+  nutvault list`,
+	Args: cobra.NoArgs,
+	RunE: runList,
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
@@ -131,6 +144,7 @@ func init() {
 	rootCmd.AddCommand(fillCmd)
 	rootCmd.AddCommand(swapCmd)
 	rootCmd.AddCommand(removeCmd)
+	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 
@@ -395,10 +409,36 @@ func runRemove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// runList executes the list command.
+// It lists all vault projects with their information.
+func runList(cmd *cobra.Command, args []string) error {
+	projects, err := vault.ListProjects()
+	if err != nil {
+		return fmt.Errorf("failed to list projects: %w", err)
+	}
+
+	if len(projects) == 0 {
+		fmt.Println("No vault projects found.")
+		return nil
+	}
+
+	fmt.Printf("Found %d vault project(s):\n\n", len(projects))
+	for i, project := range projects {
+		fmt.Printf("%d. %s\n", i+1, project.Name)
+		fmt.Printf("   Hash: %s\n", project.Hash)
+		fmt.Printf("   Path: %s\n", project.Path)
+		fmt.Printf("   Variables: %d\n", project.VarCount)
+		if i < len(projects)-1 {
+			fmt.Println()
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
-

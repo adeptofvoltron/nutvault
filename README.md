@@ -73,6 +73,17 @@ nutvault remove myproject --key-file ~/.nutvault/mykey.hex
 
 The `remove` command deletes an entire vault project and all its contents. This operation cannot be undone.
 
+#### List
+
+List all vault projects.
+
+```bash
+# List all projects
+nutvault list
+```
+
+The `list` command displays all vault projects stored in `~/.nutvault/projects/`. For each project, it shows the project name, hash, path, and number of variables.
+
 ### Options
 
 - `--env-file, -e`: Path to `.env` file (default: `.env` in current directory)
