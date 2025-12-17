@@ -306,3 +306,26 @@ func (p *Project) GetProjectDir() string {
 	return p.projectDir
 }
 
+// GetAllVariables returns a map of all variables in the vault project.
+func (p *Project) GetAllVariables() map[string]string {
+	if p.variables == nil {
+		// Try to load variables if not loaded
+		if err := p.loadVariables(); err != nil {
+			// If file doesn't exist, return empty map
+			if os.IsNotExist(err) {
+				p.variables = make(map[string]string)
+				return p.variables
+			}
+			// For other errors, return empty map (caller should handle error)
+			return make(map[string]string)
+		}
+	}
+
+	// Return a copy to prevent external modifications
+	result := make(map[string]string)
+	for k, v := range p.variables {
+		result[k] = v
+	}
+	return result
+}
+

@@ -45,24 +45,48 @@ Examples:
 var (
 	collectEnvFile string
 	collectKeyFile string
+	fillEnvFile    string
+	fillKeyFile    string
+	swapEnvFile    string
+	swapKeyFile    string
 )
 
 var fillCmd = &cobra.Command{
-	Use:   "fill",
-	Short: "Fill operation",
-	Long:  "Fill operation placeholder - implementation coming soon",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("fill command - placeholder")
-	},
+	Use:   "fill [projectName]",
+	Short: "Fill empty variables in .env file with values from vault",
+	Long: `Fill reads variables from a vault project and fills only empty variables in a .env file.
+Variables that already have values are not modified.
+
+Examples:
+  # Fill empty variables in default .env file
+  nutvault fill myproject
+
+  # Fill empty variables in custom .env file
+  nutvault fill myproject --env-file .env.production
+
+  # Fill with custom key file
+  nutvault fill myproject --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(1),
+	RunE: runFill,
 }
 
 var swapCmd = &cobra.Command{
-	Use:   "swap",
-	Short: "Swap operation",
-	Long:  "Swap operation placeholder - implementation coming soon",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("swap command - placeholder")
-	},
+	Use:   "swap [projectName]",
+	Short: "Swap all variables in .env file with values from vault",
+	Long: `Swap reads variables from a vault project and replaces all variable values in a .env file.
+All existing variable values will be overwritten with values from the vault.
+
+Examples:
+  # Swap all variables in default .env file
+  nutvault swap myproject
+
+  # Swap all variables in custom .env file
+  nutvault swap myproject --env-file .env.production
+
+  # Swap with custom key file
+  nutvault swap myproject --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(1),
+	RunE: runSwap,
 }
 
 var clearCmd = &cobra.Command{
@@ -77,6 +101,12 @@ var clearCmd = &cobra.Command{
 func init() {
 	collectCmd.Flags().StringVarP(&collectEnvFile, "env-file", "e", ".env", "Path to .env file (default: .env in current directory)")
 	collectCmd.Flags().StringVarP(&collectKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+
+	fillCmd.Flags().StringVarP(&fillEnvFile, "env-file", "e", ".env", "Path to .env file (default: .env in current directory)")
+	fillCmd.Flags().StringVarP(&fillKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+
+	swapCmd.Flags().StringVarP(&swapEnvFile, "env-file", "e", ".env", "Path to .env file (default: .env in current directory)")
+	swapCmd.Flags().StringVarP(&swapKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
 
 	rootCmd.AddCommand(collectCmd)
 	rootCmd.AddCommand(fillCmd)
@@ -169,6 +199,143 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	projectDir := project.GetProjectDir()
 	fmt.Printf("Successfully collected %d variable(s) from %s\n", savedCount, envFilePath)
 	fmt.Printf("Project saved to: %s\n", projectDir)
+
+	return nil
+}
+
+// runFill executes the fill command.
+// It fills only empty variables in .env file with values from vault.
+func runFill(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+
+	// Determine .env file path (default to .env in current directory)
+	envFilePath := fillEnvFile
+	if !filepath.IsAbs(envFilePath) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+		envFilePath = filepath.Join(cwd, envFilePath)
+	}
+
+	// Read .env file
+	envFile, err := env.ReadEnvFile(envFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read .env file: %w", err)
+	}
+
+	// Load key (default or from file)
+	var key []byte
+	if fillKeyFile != "" {
+		key, err = loadKeyFromFile(fillKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		key = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, key)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Get all variables from vault
+	vaultVariables := project.GetAllVariables()
+	if len(vaultVariables) == 0 {
+		return fmt.Errorf("no variables found in vault project")
+	}
+
+	// Fill only empty variables
+	filledCount := 0
+	for key, value := range vaultVariables {
+		// Only fill if variable exists in .env and is empty
+		if envFile.IsVariableEmpty(key) {
+			if err := envFile.SetVariable(key, value); err != nil {
+				return fmt.Errorf("failed to set variable %s: %w", key, err)
+			}
+			filledCount++
+		}
+	}
+
+	// Save .env file
+	if err := envFile.SaveEnvFile(); err != nil {
+		return fmt.Errorf("failed to save .env file: %w", err)
+	}
+
+	fmt.Printf("Successfully filled %d empty variable(s) in %s\n", filledCount, envFilePath)
+	return nil
+}
+
+// runSwap executes the swap command.
+// It replaces all variable values in .env file with values from vault.
+func runSwap(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+
+	// Determine .env file path (default to .env in current directory)
+	envFilePath := swapEnvFile
+	if !filepath.IsAbs(envFilePath) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+		envFilePath = filepath.Join(cwd, envFilePath)
+	}
+
+	// Read .env file
+	envFile, err := env.ReadEnvFile(envFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read .env file: %w", err)
+	}
+
+	// Load key (default or from file)
+	var key []byte
+	if swapKeyFile != "" {
+		key, err = loadKeyFromFile(swapKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		key = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, key)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Get all variables from vault
+	vaultVariables := project.GetAllVariables()
+	if len(vaultVariables) == 0 {
+		return fmt.Errorf("no variables found in vault project")
+	}
+
+	// Get all variables from .env file
+	envVariables := envFile.GetAllVariables()
+
+	// Swap all variables that exist in both .env and vault
+	swappedCount := 0
+	for key, value := range vaultVariables {
+		// Only swap if variable exists in .env file
+		if envFile.HasVariable(key) {
+			if err := envFile.SetVariable(key, value); err != nil {
+				return fmt.Errorf("failed to set variable %s: %w", key, err)
+			}
+			swappedCount++
+		}
+	}
+
+	// Save .env file
+	if err := envFile.SaveEnvFile(); err != nil {
+		return fmt.Errorf("failed to save .env file: %w", err)
+	}
+
+	fmt.Printf("Successfully swapped %d variable(s) in %s\n", swappedCount, envFilePath)
+	if len(envVariables) > swappedCount {
+		fmt.Printf("Note: %d variable(s) in .env file were not found in vault and were not modified\n", len(envVariables)-swappedCount)
+	}
 
 	return nil
 }
