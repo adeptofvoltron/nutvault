@@ -93,3 +93,63 @@ The `list` command displays all vault projects stored in `~/.nutvault/projects/`
 
 If no key file is specified, nutvault uses a default key generated deterministically from your user and host information. For custom encryption keys, provide a key file containing exactly 64 hex characters (32 bytes).
 
+## Installation
+
+### Download from GitHub Releases
+
+You can download the latest pre-built binary for your platform from [GitHub Releases](https://github.com/adeptofvoltron/nutvault/releases/latest).
+
+#### Linux (amd64)
+
+```bash
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/latest/download/nutvault-linux-amd64 -o /usr/local/bin/nutvault
+chmod +x /usr/local/bin/nutvault
+```
+
+#### macOS (arm64)
+
+```bash
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/latest/download/nutvault-darwin-arm64 -o /usr/local/bin/nutvault
+chmod +x /usr/local/bin/nutvault
+```
+
+#### Windows
+
+Download `nutvault-windows-amd64.exe` from the releases page and add it to your PATH.
+
+### Build from Source
+
+```bash
+git clone https://github.com/adeptofvoltron/nutvault.git
+cd nutvault
+go build -o nutvault ./cmd/nutvault
+```
+
+## Releasing a New Version
+
+To create a new release and publish binaries to GitHub Releases:
+
+1. **Build binaries for all platforms:**
+   ```bash
+   ./release.sh
+   ```
+   This will create binaries in the `dist/` directory for:
+   - Linux (amd64, arm64)
+   - macOS (amd64, arm64)
+   - Windows (amd64, arm64)
+
+2. **Create and push a Git tag:**
+   ```bash
+   git tag -a vX.Y.Z -m "release X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+3. **Create a GitHub Release using GitHub CLI:**
+   ```bash
+   gh release create vX.Y.Z dist/* --title "vX.Y.Z" --notes "Release notes"
+   ```
+   
+   Or create the release manually on GitHub and upload the files from the `dist/` directory.
+
+The `release.sh` script builds optimized binaries with `-ldflags "-s -w"` for smaller file sizes and automatically generates SHA256 checksums for each binary.
+
