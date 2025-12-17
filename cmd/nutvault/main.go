@@ -16,7 +16,7 @@ var rootCmd = &cobra.Command{
 	Use:   "nutvault",
 	Short: "nutvault - A CLI tool for managing env vault operations",
 	Long: `nutvault is a CLI tool that provides commands for managing vault operations.
-It supports operations like collect, fill, swap, and clear.`,
+It supports operations like collect, fill, swap, and remove.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// If no subcommand is provided, show help
 		cmd.Help()
@@ -49,6 +49,7 @@ var (
 	fillKeyFile    string
 	swapEnvFile    string
 	swapKeyFile    string
+	removeKeyFile  string
 )
 
 var fillCmd = &cobra.Command{
@@ -89,13 +90,20 @@ Examples:
 	RunE: runSwap,
 }
 
-var clearCmd = &cobra.Command{
-	Use:   "clear",
-	Short: "Clear operation",
-	Long:  "Clear operation placeholder - implementation coming soon",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("clear command - placeholder")
-	},
+var removeCmd = &cobra.Command{
+	Use:   "remove [projectName]",
+	Short: "Remove (delete) a vault project",
+	Long: `Remove deletes an entire vault project and all its contents.
+This operation cannot be undone. All variables stored in the project will be permanently deleted.
+
+Examples:
+  # Remove project with default key
+  nutvault remove myproject
+
+  # Remove project with custom key file
+  nutvault remove myproject --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(1),
+	RunE: runRemove,
 }
 
 func init() {
@@ -108,10 +116,12 @@ func init() {
 	swapCmd.Flags().StringVarP(&swapEnvFile, "env-file", "e", ".env", "Path to .env file (default: .env in current directory)")
 	swapCmd.Flags().StringVarP(&swapKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
 
+	removeCmd.Flags().StringVarP(&removeKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+
 	rootCmd.AddCommand(collectCmd)
 	rootCmd.AddCommand(fillCmd)
 	rootCmd.AddCommand(swapCmd)
-	rootCmd.AddCommand(clearCmd)
+	rootCmd.AddCommand(removeCmd)
 }
 
 // loadKeyFromFile loads a key from a file in hex format.
@@ -337,6 +347,41 @@ func runSwap(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Note: %d variable(s) in .env file were not found in vault and were not modified\n", len(envVariables)-swappedCount)
 	}
 
+	return nil
+}
+
+// runRemove executes the remove command.
+// It removes the entire vault project and all its contents.
+func runRemove(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+
+	// Load key (default or from file)
+	var key []byte
+	var err error
+	if removeKeyFile != "" {
+		key, err = loadKeyFromFile(removeKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		key = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, key)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Get project directory before removing
+	projectDir := project.GetProjectDir()
+
+	// Remove the project
+	if err := project.ClearProject(); err != nil {
+		return fmt.Errorf("failed to remove project: %w", err)
+	}
+
+	fmt.Printf("Successfully removed project: %s\n", projectDir)
 	return nil
 }
 
