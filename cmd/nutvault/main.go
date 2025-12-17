@@ -146,6 +146,9 @@ func init() {
 	rootCmd.AddCommand(removeCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(versionCmd)
+
+	// Hide completion command from help, but keep it functional
+	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 }
 
 // loadKeyFromFile loads a key from a file in hex format.
