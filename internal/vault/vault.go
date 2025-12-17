@@ -1,10 +1,14 @@
 package vault
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -123,30 +127,101 @@ func NewProject(projectName string, key []byte) (*Project, error) {
 	return project, nil
 }
 
-// loadVariables loads variables from the data.json file in the project directory.
+// encryptData encrypts data using AES-GCM with the project key.
+func (p *Project) encryptData(plaintext []byte) ([]byte, error) {
+	// Use the project key directly (it's already 32 bytes from SHA256)
+	block, err := aes.NewCipher(p.key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cipher: %w", err)
+	}
+
+	// Create GCM mode
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	// Generate random nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	// Encrypt and prepend nonce
+	ciphertext := gcm.Seal(nonce, nonce, plaintext, nil)
+	return ciphertext, nil
+}
+
+// decryptData decrypts data using AES-GCM with the project key.
+func (p *Project) decryptData(ciphertext []byte) ([]byte, error) {
+	// Use the project key directly (it's already 32 bytes from SHA256)
+	block, err := aes.NewCipher(p.key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cipher: %w", err)
+	}
+
+	// Create GCM mode
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	// Extract nonce (first gcm.NonceSize() bytes)
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+
+	// Decrypt
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt: %w", err)
+	}
+
+	return plaintext, nil
+}
+
+// loadVariables loads and decrypts variables from the data.json file in the project directory.
 func (p *Project) loadVariables() error {
 	dataPath := filepath.Join(p.projectDir, "data.json")
-	data, err := os.ReadFile(dataPath)
+	encryptedData, err := os.ReadFile(dataPath)
 	if err != nil {
 		return fmt.Errorf("failed to read data.json: %w", err)
 	}
 
-	if err := json.Unmarshal(data, &p.variables); err != nil {
+	// Decrypt the data
+	decryptedData, err := p.decryptData(encryptedData)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt data: %w", err)
+	}
+
+	if err := json.Unmarshal(decryptedData, &p.variables); err != nil {
 		return fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
 	return nil
 }
 
-// saveVariables saves variables to the data.json file in the project directory.
+// saveVariables encrypts and saves variables to the data.json file in the project directory.
 func (p *Project) saveVariables() error {
 	dataPath := filepath.Join(p.projectDir, "data.json")
-	data, err := json.MarshalIndent(p.variables, "", "  ")
+	
+	// Marshal to JSON
+	jsonData, err := json.MarshalIndent(p.variables, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	if err := os.WriteFile(dataPath, data, 0600); err != nil {
+	// Encrypt the data
+	encryptedData, err := p.encryptData(jsonData)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt data: %w", err)
+	}
+
+	// Write encrypted data to file
+	if err := os.WriteFile(dataPath, encryptedData, 0600); err != nil {
 		return fmt.Errorf("failed to write data.json: %w", err)
 	}
 
