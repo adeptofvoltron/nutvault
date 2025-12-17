@@ -38,3 +38,4 @@ Dodaj tutaj jakikolwiek inny kontekst lub zrzuty ekranu dotyczące proponowanej 
 - [ ] Średni - byłoby miło mieć
 - [ ] Niski - drobna poprawka
 
+

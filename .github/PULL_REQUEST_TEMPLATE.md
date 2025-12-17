@@ -42,3 +42,4 @@ Jeśli zmiany dotyczą UI lub CLI output, dodaj zrzuty ekranu.
 ## Dodatkowe informacje
 Dodaj tutaj jakiekolwiek inne informacje, które mogą być przydatne dla reviewerów.
 
+

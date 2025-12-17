@@ -47,3 +47,4 @@ Dodaj tutaj jakikolwiek inny kontekst dotyczący problemu.
 ## Możliwe rozwiązanie
 Jeśli masz pomysł, jak to naprawić, opisz go tutaj.
 
+
