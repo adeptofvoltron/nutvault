@@ -28,4 +28,5 @@ jobs:
           tag: ${{ github.ref_name }}
           artifacts: dist/*
           token: ${{ secrets.GITHUB_TOKEN }}
+          makeLatest: true
 
