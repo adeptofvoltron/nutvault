@@ -281,6 +281,43 @@ func (p *Project) GetVariable(key string) (string, bool, error) {
 	return value, exists, nil
 }
 
+// RemoveVariable removes a variable from the project vault.
+// The variable is removed from memory and the change is persisted to data.json file.
+//
+// Example:
+//
+//	err := project.RemoveVariable("API_KEY")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+func (p *Project) RemoveVariable(key string) error {
+	if p.variables == nil {
+		// Try to load variables if not loaded
+		if err := p.loadVariables(); err != nil {
+			// If file doesn't exist, variable doesn't exist
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return fmt.Errorf("failed to load variables: %w", err)
+		}
+	}
+
+	// Check if variable exists
+	if _, exists := p.variables[key]; !exists {
+		return fmt.Errorf("variable %s does not exist", key)
+	}
+
+	// Remove from map
+	delete(p.variables, key)
+
+	// Save changes
+	if err := p.saveVariables(); err != nil {
+		return fmt.Errorf("failed to save variable: %w", err)
+	}
+
+	return nil
+}
+
 // ClearProject removes the entire project directory and all its contents.
 // This operation cannot be undone.
 //
