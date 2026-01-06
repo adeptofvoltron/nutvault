@@ -43,13 +43,17 @@ Examples:
 }
 
 var (
-	collectEnvFile string
-	collectKeyFile string
-	fillEnvFile    string
-	fillKeyFile    string
-	swapEnvFile    string
-	swapKeyFile    string
-	removeKeyFile  string
+	collectEnvFile     string
+	collectKeyFile     string
+	fillEnvFile        string
+	fillKeyFile        string
+	swapEnvFile        string
+	swapKeyFile        string
+	removeKeyFile      string
+	valueSetKeyFile    string
+	valueRemoveKeyFile string
+	valueGetKeyFile    string
+	valueListKeyFile   string
 )
 
 var fillCmd = &cobra.Command{
@@ -119,6 +123,66 @@ Examples:
 	RunE: runList,
 }
 
+var valueSetCmd = &cobra.Command{
+	Use:   "value-set [projectName] [key] [value]",
+	Short: "Set a variable value in a vault project",
+	Long: `Set sets or updates a variable value in a vault project.
+
+Examples:
+  # Set a variable with default key
+  nutvault value-set myproject API_KEY secret123
+
+  # Set a variable with custom key file
+  nutvault value-set myproject API_KEY secret123 --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(3),
+	RunE: runValueSet,
+}
+
+var valueRemoveCmd = &cobra.Command{
+	Use:   "value-remove [projectName] [key]",
+	Short: "Remove a variable from a vault project",
+	Long: `Remove deletes a variable from a vault project.
+
+Examples:
+  # Remove a variable with default key
+  nutvault value-remove myproject API_KEY
+
+  # Remove a variable with custom key file
+  nutvault value-remove myproject API_KEY --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(2),
+	RunE: runValueRemove,
+}
+
+var valueGetCmd = &cobra.Command{
+	Use:   "value-get [projectName] [key]",
+	Short: "Get a variable value from a vault project",
+	Long: `Get retrieves a variable value from a vault project and displays it in KEY=value format.
+
+Examples:
+  # Get a variable with default key
+  nutvault value-get myproject API_KEY
+
+  # Get a variable with custom key file
+  nutvault value-get myproject API_KEY --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(2),
+	RunE: runValueGet,
+}
+
+var valueListCmd = &cobra.Command{
+	Use:   "value-list [projectName]",
+	Short: "List all variables in a vault project",
+	Long: `List displays all variables from a vault project in KEY=value format.
+
+Examples:
+  # List all variables with default key
+  nutvault value-list myproject
+
+  # List all variables with custom key file
+  nutvault value-list myproject --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(1),
+	RunE: runValueList,
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
@@ -140,11 +204,20 @@ func init() {
 
 	removeCmd.Flags().StringVarP(&removeKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
 
+	valueSetCmd.Flags().StringVarP(&valueSetKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+	valueRemoveCmd.Flags().StringVarP(&valueRemoveKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+	valueGetCmd.Flags().StringVarP(&valueGetKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+	valueListCmd.Flags().StringVarP(&valueListKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+
 	rootCmd.AddCommand(collectCmd)
 	rootCmd.AddCommand(fillCmd)
 	rootCmd.AddCommand(swapCmd)
 	rootCmd.AddCommand(removeCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(valueSetCmd)
+	rootCmd.AddCommand(valueRemoveCmd)
+	rootCmd.AddCommand(valueGetCmd)
+	rootCmd.AddCommand(valueListCmd)
 	rootCmd.AddCommand(versionCmd)
 
 	// Hide completion command from help, but keep it functional
@@ -434,6 +507,150 @@ func runList(cmd *cobra.Command, args []string) error {
 		if i < len(projects)-1 {
 			fmt.Println()
 		}
+	}
+
+	return nil
+}
+
+// runValueSet executes the value-set command.
+// It sets or updates a variable value in a vault project.
+func runValueSet(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+	key := args[1]
+	value := args[2]
+
+	// Load key (default or from file)
+	var encryptionKey []byte
+	var err error
+	if valueSetKeyFile != "" {
+		encryptionKey, err = loadKeyFromFile(valueSetKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		encryptionKey = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Save variable
+	if err := project.SaveVariable(key, value); err != nil {
+		return fmt.Errorf("failed to save variable: %w", err)
+	}
+
+	fmt.Printf("Successfully set variable %s in project %s\n", key, projectName)
+	return nil
+}
+
+// runValueRemove executes the value-remove command.
+// It removes a variable from a vault project.
+func runValueRemove(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+	key := args[1]
+
+	// Load key (default or from file)
+	var encryptionKey []byte
+	var err error
+	if valueRemoveKeyFile != "" {
+		encryptionKey, err = loadKeyFromFile(valueRemoveKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		encryptionKey = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Remove variable
+	if err := project.RemoveVariable(key); err != nil {
+		return fmt.Errorf("failed to remove variable: %w", err)
+	}
+
+	fmt.Printf("Successfully removed variable %s from project %s\n", key, projectName)
+	return nil
+}
+
+// runValueGet executes the value-get command.
+// It retrieves a variable value from a vault project and displays it in KEY=value format.
+func runValueGet(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+	key := args[1]
+
+	// Load key (default or from file)
+	var encryptionKey []byte
+	var err error
+	if valueGetKeyFile != "" {
+		encryptionKey, err = loadKeyFromFile(valueGetKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		encryptionKey = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Get variable
+	value, exists, err := project.GetVariable(key)
+	if err != nil {
+		return fmt.Errorf("failed to get variable: %w", err)
+	}
+
+	if !exists {
+		return fmt.Errorf("variable %s does not exist in project %s", key, projectName)
+	}
+
+	// Output in KEY=value format
+	fmt.Printf("%s=%s\n", key, value)
+	return nil
+}
+
+// runValueList executes the value-list command.
+// It retrieves all variables from a vault project and displays them in KEY=value format.
+func runValueList(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+
+	// Load key (default or from file)
+	var encryptionKey []byte
+	var err error
+	if valueListKeyFile != "" {
+		encryptionKey, err = loadKeyFromFile(valueListKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		encryptionKey = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Get all variables
+	variables := project.GetAllVariables()
+	if len(variables) == 0 {
+		fmt.Printf("No variables found in project %s\n", projectName)
+		return nil
+	}
+
+	// Output all variables in KEY=value format (one per line)
+	for key, value := range variables {
+		fmt.Printf("%s=%s\n", key, value)
 	}
 
 	return nil
