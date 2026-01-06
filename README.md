@@ -158,28 +158,28 @@ You can download the latest pre-built binary for your platform from [GitHub Rele
 #### Linux (amd64)
 
 ```bash
-curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.0.1/nutvault-linux-amd64 -o /usr/local/bin/nutvault
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.1.0/nutvault-linux-amd64 -o /usr/local/bin/nutvault
 chmod +x /usr/local/bin/nutvault
 ```
 
 #### Linux (arm64)
 
 ```bash
-curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.0.1/nutvault-linux-arm64 -o /usr/local/bin/nutvault
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.1.0/nutvault-linux-arm64 -o /usr/local/bin/nutvault
 chmod +x /usr/local/bin/nutvault
 ```
 
 #### macOS (amd64)
 
 ```bash
-curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.0.1/nutvault-darwin-amd64 -o /usr/local/bin/nutvault
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.1.0/nutvault-darwin-amd64 -o /usr/local/bin/nutvault
 chmod +x /usr/local/bin/nutvault
 ```
 
 #### macOS (arm64)
 
 ```bash
-curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.0.1/nutvault-darwin-arm64 -o /usr/local/bin/nutvault
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.1.0/nutvault-darwin-arm64 -o /usr/local/bin/nutvault
 chmod +x /usr/local/bin/nutvault
 ```
 
@@ -190,7 +190,7 @@ Download `nutvault-windows-amd64.exe` from the releases page and add it to your 
 Or use curl:
 
 ```bash
-curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.0.1/nutvault-windows-amd64.exe -o nutvault.exe
+curl -sL https://github.com/adeptofvoltron/nutvault/releases/download/v1.1.0/nutvault-windows-amd64.exe -o nutvault.exe
 ```
 
 ### Build from Source
