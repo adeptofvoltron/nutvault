@@ -43,16 +43,17 @@ Examples:
 }
 
 var (
-	collectEnvFile    string
-	collectKeyFile    string
-	fillEnvFile       string
-	fillKeyFile       string
-	swapEnvFile       string
-	swapKeyFile       string
-	removeKeyFile     string
-	valueSetKeyFile   string
+	collectEnvFile     string
+	collectKeyFile     string
+	fillEnvFile        string
+	fillKeyFile        string
+	swapEnvFile        string
+	swapKeyFile        string
+	removeKeyFile      string
+	valueSetKeyFile    string
 	valueRemoveKeyFile string
-	valueGetKeyFile   string
+	valueGetKeyFile    string
+	valueListKeyFile   string
 )
 
 var fillCmd = &cobra.Command{
@@ -167,6 +168,21 @@ Examples:
 	RunE: runValueGet,
 }
 
+var valueListCmd = &cobra.Command{
+	Use:   "value-list [projectName]",
+	Short: "List all variables in a vault project",
+	Long: `List displays all variables from a vault project in KEY=value format.
+
+Examples:
+  # List all variables with default key
+  nutvault value-list myproject
+
+  # List all variables with custom key file
+  nutvault value-list myproject --key-file ~/.nutvault/mykey.hex`,
+	Args: cobra.ExactArgs(1),
+	RunE: runValueList,
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
@@ -191,6 +207,7 @@ func init() {
 	valueSetCmd.Flags().StringVarP(&valueSetKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
 	valueRemoveCmd.Flags().StringVarP(&valueRemoveKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
 	valueGetCmd.Flags().StringVarP(&valueGetKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
+	valueListCmd.Flags().StringVarP(&valueListKeyFile, "key-file", "k", "", "Path to key file in hex format (default: use default user key)")
 
 	rootCmd.AddCommand(collectCmd)
 	rootCmd.AddCommand(fillCmd)
@@ -200,6 +217,7 @@ func init() {
 	rootCmd.AddCommand(valueSetCmd)
 	rootCmd.AddCommand(valueRemoveCmd)
 	rootCmd.AddCommand(valueGetCmd)
+	rootCmd.AddCommand(valueListCmd)
 	rootCmd.AddCommand(versionCmd)
 
 	// Hide completion command from help, but keep it functional
@@ -597,6 +615,44 @@ func runValueGet(cmd *cobra.Command, args []string) error {
 
 	// Output in KEY=value format
 	fmt.Printf("%s=%s\n", key, value)
+	return nil
+}
+
+// runValueList executes the value-list command.
+// It retrieves all variables from a vault project and displays them in KEY=value format.
+func runValueList(cmd *cobra.Command, args []string) error {
+	projectName := args[0]
+
+	// Load key (default or from file)
+	var encryptionKey []byte
+	var err error
+	if valueListKeyFile != "" {
+		encryptionKey, err = loadKeyFromFile(valueListKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load key from file: %w", err)
+		}
+	} else {
+		encryptionKey = nil
+	}
+
+	// Open vault project
+	project, err := vault.NewProject(projectName, encryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to open vault project: %w", err)
+	}
+
+	// Get all variables
+	variables := project.GetAllVariables()
+	if len(variables) == 0 {
+		fmt.Printf("No variables found in project %s\n", projectName)
+		return nil
+	}
+
+	// Output all variables in KEY=value format (one per line)
+	for key, value := range variables {
+		fmt.Printf("%s=%s\n", key, value)
+	}
+
 	return nil
 }
 
