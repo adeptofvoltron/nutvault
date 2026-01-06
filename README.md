@@ -84,6 +84,62 @@ nutvault list
 
 The `list` command displays all vault projects stored in `~/.nutvault/projects/`. For each project, it shows the project name, hash, path, and number of variables.
 
+#### Value Set
+
+Set or update a variable value in a vault project.
+
+```bash
+# Set a variable with default key
+nutvault value-set myproject API_KEY secret123
+
+# Set a variable with custom key file
+nutvault value-set myproject API_KEY secret123 --key-file ~/.nutvault/mykey.hex
+```
+
+The `value-set` command sets or updates a single variable in a vault project. If the variable already exists, its value will be overwritten.
+
+#### Value Remove
+
+Remove a variable from a vault project.
+
+```bash
+# Remove a variable with default key
+nutvault value-remove myproject API_KEY
+
+# Remove a variable with custom key file
+nutvault value-remove myproject API_KEY --key-file ~/.nutvault/mykey.hex
+```
+
+The `value-remove` command deletes a single variable from a vault project. This operation cannot be undone for that specific variable.
+
+#### Value Get
+
+Get a variable value from a vault project.
+
+```bash
+# Get a variable with default key
+nutvault value-get myproject API_KEY
+
+# Get a variable with custom key file
+nutvault value-get myproject API_KEY --key-file ~/.nutvault/mykey.hex
+```
+
+The `value-get` command retrieves a single variable from a vault project and displays it in `KEY=value` format. The command will return an error if the variable does not exist.
+
+#### Value List
+
+List all variables in a vault project.
+
+```bash
+# List all variables with default key
+nutvault value-list myproject
+
+# List all variables with custom key file
+nutvault value-list myproject --key-file ~/.nutvault/mykey.hex
+```
+
+The `value-list` command displays all variables from a vault project in `KEY=value` format, one variable per line.
+
 ### Options
 
 - `--env-file, -e`: Path to `.env` file (default: `.env` in current directory)
